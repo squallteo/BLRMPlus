@@ -1,12 +1,12 @@
-library(R2jags)
-library(tidyverse)
-library(readxl)
+package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "foreach")
+lapply(package2load, require, character.only = TRUE)
 
 source("00-JAGSModel.R")
 
-DoseProv_mono <- c(5, 10, 25, 50, 100, 200, 400)
+DoseProv <- c(5, 10, 25, 50, 100, 200, 400)
 DoseRef <- 50
-Pint <- c(0.16, 0.33)
+Pint_BLRM <- c(0, 0.2, 0.3, 1)
+Pint_kbd <- seq(0, 1, 0.1)
 ewoc <- 0.3
 
 #Prior distributions
@@ -26,19 +26,35 @@ admdt <- updatedt %>% filter(Npat > 0)
 
 jags_data <- list(Ntox = admdt$Ntox, Npat = admdt$Npat, DoseAdm = admdt$Dose, NdoseAdm = nrow(admdt),
                   DoseProv = updatedt$Dose, NdoseProv = nrow(updatedt), DoseRef = DoseRef,
-                  Prior = prior_ab, Pint = Pint
+                  Prior = prior_ab
 )
 
-# param <- c("Pr.Cat")
-# jags_obj <- jags(model.file = BLRM_orig, data = jags_data, parameters.to.save = param, 
-#                  n.chains = 3, n.burnin = 10000, n.iter = 50000)
 
-jags_obj <- jags(model.file = BLRM_orig, data = jags_data, parameters.to.save = "Pr.Tox", 
-                 n.chains = 3, n.burnin = 10000, n.iter = 50000, n.thin = 5)
+jags_obj <- jags(model.file = BLRM_orig, data = jags_data, parameters.to.save = c("Pr.Tox"), 
+                 n.chains = 3, n.burnin = 10000, n.iter = 50000)
 
-PrTox <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(-deviance)
-
-Pint <- c(0, 0.16, 0.33, 1)
+PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
 
 
-# jags_auto <- autojags(jags_obj, Rhat = 1.1, n.thin = 4, n.iter = 40000, n.update = 3)
+toxcat <- function(row, Pint, DoseProv){
+  Ncat <- length(Pint) - 1
+  probdiff <- as.matrix(row) %x% rep(1,Ncat) - t(rep(1, length(DoseProv))) %x% Pint[-length(Pint)]
+  tt <- (probdiff > 0)
+  apply(tt, 2, function(x) max(which(x==1)))
+}
+
+row <- PrTox_mcmc[1,]
+Pint <- Pint_kbd
+
+
+out <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint, DoseProv = DoseProv)) %>% select(starts_with("V")) 
+
+out_BLRM <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint_BLRM, DoseProv = DoseProv)) %>% select(starts_with("V")) 
+out_kbd <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint_kbd, DoseProv = DoseProv)) %>% select(starts_with("V")) 
+
+
+do.call(cbind, lapply(out_kbd, function(x) {prop.table(table(x, useNA = "no"))}))
+
+interval_prob <- do.call(cbind, lapply(out_BLRM, function(x) {prop.table(table(x, useNA = "no"))}))
+diff(Pint_BLRM)
+diff(Pint_kbd)

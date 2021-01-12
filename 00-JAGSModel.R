@@ -16,9 +16,9 @@ BLRM_orig <- function(){
   for (i in 1:NdoseProv) {
     lin[i] <- log.alphabeta[1] + exp(log.alphabeta[2]) * log(DoseProv[i]/DoseRef) 
     logit(Pr.Tox[i]) <- lin[i]
-    Pr.Cat[i,1] <- step(Pint[1]-Pr.Tox[i])
-    Pr.Cat[i,2] <- step(Pint[2]-Pr.Tox[i])-step(Pint[1]-Pr.Tox[i])
-    Pr.Cat[i,3] <- step(1-Pr.Tox[i])-step(Pint[2]-Pr.Tox[i])
+    # Pr.Cat[i,1] <- step(Pint[1]-Pr.Tox[i])
+    # Pr.Cat[i,2] <- step(Pint[2]-Pr.Tox[i])-step(Pint[1]-Pr.Tox[i])
+    # Pr.Cat[i,3] <- step(1-Pr.Tox[i])-step(Pint[2]-Pr.Tox[i])
   }
 }
 
