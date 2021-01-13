@@ -2,6 +2,7 @@ package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "foreach")
 lapply(package2load, require, character.only = TRUE)
 
 source("00-JAGSModel.R")
+source("00-DEFunctions.R")
 
 DoseProv <- c(5, 10, 25, 50, 100, 200, 400)
 DoseRef <- 50
@@ -35,26 +36,15 @@ jags_obj <- jags(model.file = BLRM_orig, data = jags_data, parameters.to.save = 
 
 PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
 
+#compute posterior probabilites of each interval outside BUGS for added programming flexibility
+#need to revisit if first and last intervals are discarded
+#for BLRM and design 2
+tt <- interval_prob(Pint_BLRM, DoseProv)
+#calculate UPM for design 2
+tt / diff(Pint_BLRM) %x% t(rep(1, length(DoseProv)))
 
-toxcat <- function(row, Pint, DoseProv){
-  Ncat <- length(Pint) - 1
-  probdiff <- as.matrix(row) %x% rep(1,Ncat) - t(rep(1, length(DoseProv))) %x% Pint[-length(Pint)]
-  tt <- (probdiff > 0)
-  apply(tt, 2, function(x) max(which(x==1)))
-}
-
-row <- PrTox_mcmc[1,]
-Pint <- Pint_kbd
-
-
-out <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint, DoseProv = DoseProv)) %>% select(starts_with("V")) 
-
-out_BLRM <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint_BLRM, DoseProv = DoseProv)) %>% select(starts_with("V")) 
-out_kbd <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint_kbd, DoseProv = DoseProv)) %>% select(starts_with("V")) 
+#for design 3
+interval_prob(Pint_kbd, DoseProv)
 
 
-do.call(cbind, lapply(out_kbd, function(x) {prop.table(table(x, useNA = "no"))}))
 
-interval_prob <- do.call(cbind, lapply(out_BLRM, function(x) {prop.table(table(x, useNA = "no"))}))
-diff(Pint_BLRM)
-diff(Pint_kbd)
