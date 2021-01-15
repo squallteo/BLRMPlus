@@ -5,11 +5,47 @@ toxcat <- function(row, Pint, DoseProv){
   apply(tt, 2, function(x) max(which(x==1)))
 }
 
-interval_prob <- function(Pint, DoseProv){
+interval_prob <- function(jagsdata, Pint, DoseProv){
   interval_levels <- 1:(length(Pint)-1)
-  out <- as_tibble(adply(PrTox_mcmc, 1, toxcat, Pint = Pint, DoseProv = DoseProv)) %>% select(starts_with("V"))
+  out <- as_tibble(adply(jagsdata, 1, toxcat, Pint = Pint, DoseProv = DoseProv)) %>% select(starts_with("V"))
   
   #crucial step to convert all columns to factors, in case some categories are not present at a certain dose level
   out_fct = lapply(out, factor, levels = interval_levels)
-  do.call(cbind, lapply(out_fct, function(x) {prop.table(table(x, useNA = "no"))}))
+  tt <- as_tibble(do.call(cbind, lapply(out_fct, function(x) {prop.table(table(x, useNA = "no"))})))
+  probdt <- as_tibble(t(tt), .name_repair = "minimal")
+  names(probdt) <- c("Punder", "Ptarget", "Pover")
+  
+  return(probdt)
+}
+
+checkstop_BLRM = function(probdt, target.prob = 0.5, min.subj.MTD = 6, max.subj = 40, ewoc = 0.25){
+  probdt <- probdt %>% mutate(Toxic = (Pover > ewoc)*1)
+  Ntotal <- probdt %>% summarize_at("Npat",sum) %>% select(Npat)
+  currdt <- probdt %>% filter(Current == 1)
+  
+  #target interval probability achieved & EWOC okay
+  cond1 <- (currdt$Ptarget >= target.prob & !currdt$Toxic)
+  #minimum number of subjects achieved at MTD
+  cond2 <- (currdt$Npat >= min.subj.MTD)
+  #maximum number of subjects per strata reached
+  cond3 <- c(Ntotal >= max.subj)
+  #all doses are toxic
+  cond4 <- probdt %>% summarize_at("Toxic", prod) %>% select(Toxic)
+  
+  stop4mtd <- (cond1 & cond2)
+  stop4tox <- cond4
+  stop4ss <- !(stop4mtd | stop4tox) & cond3
+  nostop <- !(stop4mtd | stop4ss | stop4tox)
+  stopcode <- 0 * nostop + 1 * stop4ss + 2 * stop4mtd + 3 * stop4tox
+  
+  return(stopcode)
+}
+
+esc_rec = function(probdt, ewoc = 0.25){
+  next_dose <- probdt %>% filter(Pover < ewoc) %>% group_by(Stratum) %>% filter(Ptarget == max(Ptarget)) %>% select(Stratum, Dose) %>% rename(Dose_next = Dose)
+  recdt <-   probdt %>% filter(Current == 1) %>% left_join(next_dose, by = "Stratum") %>% 
+    mutate(Action = -1*(Dose_next < Dose) + 0*(Dose_next == Dose) + 1*(Dose_next > Dose)) %>%
+    select(Stratum, Dose, Dose_next, Action) %>% rename(Dose_curr = Dose)
+  
+  return(recdt)
 }
