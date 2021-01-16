@@ -32,16 +32,17 @@ jags_data <- list(Ntox = admdt$Ntox, Npat = admdt$Npat, DoseAdm = admdt$Dose, Nd
                   Prior = prior_ab
 )
 
-
 jags_obj <- jags(model.file = BLRM_orig, data = jags_data, parameters.to.save = c("Pr.Tox"), 
                  n.chains = 3, n.burnin = 10000, n.iter = 50000)
 
-PrTox_mcmc <- as_tibble(jags_obj$BUGSoutpuput$sims.matrix) %>% select(starts_with("Pr.Tox"))
+PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
 
-#compute posterior probabilites of each interval outside BUGS for added programming flexibility
+#compute posterior probabilities of each interval outside BUGS for added programming flexibility
 #for BLRM (with and without EWOC) and new designs 1 and 2
 BLRM_prob <- cbind(updatedt, interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv))
 stopcode <- checkstop_BLRM(BLRM_prob)
+
+action_BLRM(BLRM_prob, ewoc)
 
 #calculate UPM for design 2
 tt / diff(Pint_BLRM) %x% t(rep(1, length(DoseProv)))

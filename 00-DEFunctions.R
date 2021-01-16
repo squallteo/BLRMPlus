@@ -41,11 +41,10 @@ checkstop_BLRM = function(probdt, target.prob = 0.5, min.subj.MTD = 6, max.subj 
   return(stopcode)
 }
 
-esc_rec = function(probdt, ewoc = 0.25){
-  next_dose <- probdt %>% filter(Pover < ewoc) %>% group_by(Stratum) %>% filter(Ptarget == max(Ptarget)) %>% select(Stratum, Dose) %>% rename(Dose_next = Dose)
-  recdt <-   probdt %>% filter(Current == 1) %>% left_join(next_dose, by = "Stratum") %>% 
-    mutate(Action = -1*(Dose_next < Dose) + 0*(Dose_next == Dose) + 1*(Dose_next > Dose)) %>%
-    select(Stratum, Dose, Dose_next, Action) %>% rename(Dose_curr = Dose)
+action_BLRM = function(probdt, ewoc = 0.25){
+  next_dose <- probdt %>% filter(Pover < ewoc) %>% filter(Ptarget == max(Ptarget)) %>% select(Dose)
+  curr_dose <- probdt %>% filter(Current==1) %>% select(Dose)
+  action <- -1*(next_dose < curr_dose) + 0*(next_dose == curr_dose) + 1*(next_dose > curr_dose)
   
-  return(recdt)
+  return(action)
 }
