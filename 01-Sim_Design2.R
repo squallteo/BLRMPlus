@@ -54,7 +54,11 @@ for(s in 1:nsim){
                      n.chains = 3, n.burnin = 10000, n.iter = 50000, progress.bar = "none")
     PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
     
-    BLRM_prob <- cbind(cumdt, interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv))
+    probdt <- interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv)
+    upmdt <- probdt / (rep(1, length(DoseProv)) %o% diff(Pint_BLRM) )
+    
+    d2_prob <- cbind(cumdt, probdt)
+    d2_upm <- cbind(cumdt, upmdt)
     stopcode <- checkstop_BLRM(BLRM_prob, target.prob = target_prob, max.subj = Nmax, ewoc = ewoc)
     cohort_index <- cohort_index + 1
     

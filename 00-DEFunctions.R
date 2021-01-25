@@ -18,6 +18,7 @@ interval_prob <- function(jagsdata, Pint, DoseProv){
   return(probdt)
 }
 
+#BLRM functions
 checkstop_BLRM = function(probdt, target.prob = 0.5, min.subj.MTD = 6, max.subj = 40, ewoc = 0.25){
   probdt <- probdt %>% mutate(Toxic = (Pover > ewoc)*1)
   Ntotal <- probdt %>% summarize_at("Npat",sum) %>% select(Npat)
@@ -48,3 +49,18 @@ action_BLRM = function(probdt, ewoc = 0.25){
   
   return(action)
 }
+
+
+#New design 2 functions
+action_d2 = function(probdt, Pint, ewoc = 0.25){
+  browser()
+  upmdt <- probdt / diff(Pint_BLRM) %x% t(rep(1, length(DoseProv)))
+  
+  next_dose <- probdt %>% filter(Pover < ewoc) %>% filter(Ptarget == max(Ptarget)) %>% select(Dose)
+  curr_dose <- probdt %>% filter(Current==1) %>% select(Dose)
+  action <- -1*(next_dose < curr_dose) + 0*(next_dose == curr_dose) + 1*(next_dose > curr_dose)
+  
+  return(action)
+}
+
+#calculate UPM for design 2
