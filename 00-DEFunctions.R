@@ -1,3 +1,55 @@
+ToxClassGen <- function(dosevec, target_prob, nscenarios, muvec, sigmavec){
+#Generate a class of dose-toxicity scenario originally proposed in Paoletti et al (2004), also elaborated in Liu and Yuan (2015) BOIN paper
+#
+  library(tidyverse)
+  
+  for(s in 1:nscenarios){
+    ratevec <- rep(NA, length(dosevec))
+    #step 1: randomly select a MTD with equal probabilities
+    MTD <- sample(dosevec,1)
+    MTD_index <- which(dosevec == MTD)
+    
+    #step 2: genearte the DLT rate at MTD
+    ratevec[MTD_index] <- pnorm(rnorm(1, mean = qnorm(target_prob), sd = sigmavec[1]))
+    
+    #step 3: generate the DLT rate(s) at doses adjacent to MTD, subject to the constraint that DLT rate of MTD is closest to the target probability
+    if(MTD_index != 1){
+      comp1 <- qnorm(ratevec[MTD_index])
+      comp2 <- qnorm(ratevec[MTD_index]) - qnorm(2 * target_prob - ratevec[MTD_index])
+      comp3 <- (qnorm(ratevec[MTD_index]) > qnorm(target_prob))
+      e1 <- rnorm(1, mean = muvec[1], sd = sigmavec[2])
+      ratevec[MTD_index-1] <- pnorm(comp1 - comp2 * comp3 - e1^2)
+    }
+    if(MTD_index != length(dosevec)){
+      comp1 <- qnorm(ratevec[MTD_index])
+      comp2 <- qnorm(2 * target_prob - ratevec[MTD_index]) - qnorm(ratevec[MTD_index])
+      comp3 <- (qnorm(ratevec[MTD_index]) < qnorm(target_prob))
+      e2 <- rnorm(1, mean = muvec[2], sd = sigmavec[3])
+      ratevec[MTD_index+1] <- pnorm(comp1 + comp2 * comp3 + e1^2)
+    }
+    
+    #step 4: sequentially generate the DLT rates for remaining dose levels
+    if(MTD_index > 2){
+      for(j in (MTD_index - 2):1){
+        e1 <- rnorm(1, mean = muvec[1], sd = sigmavec[2])
+        ratevec[j] <- pnorm(qnorm(ratevec[j+1]) - e1^2)
+      }
+    }
+    if(MTD_index < (length(dosevec)-1)){
+      for(j in (MTD_index + 2):length(dosevec)){
+        e2 <- rnorm(1, mean = muvec[2], sd = sigmavec[3])
+        ratevec[j] <- pnorm(qnorm(ratevec[j-1]) + e2^2)
+      }
+    }
+    
+    toxdt <- tibble(Dose = dosevec, Rate = ratevec, Sim = s)
+    if(s==1) outdt <- toxdt
+    else outdt <- rbind(outdt, toxdt)
+  }
+  
+  return(outdt)
+}
+
 toxcat <- function(row, Pint, DoseProv){
   Ncat <- length(Pint) - 1
   probdiff <- as.matrix(row) %x% rep(1,Ncat) - t(rep(1, length(DoseProv))) %x% Pint[-length(Pint)]
