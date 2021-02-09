@@ -23,8 +23,10 @@ if(n_display > 0){
 MTDdt <- 
   toxdt %>% mutate(Target = (Rate >= target_interval[1] & Rate < target_interval[2])) %>% 
   group_by(Sim) %>% summarize(NMTD = sum(Target))
-
-MeanRatedt <- 
-  toxdt %>% group_by(Dose) %>% summarize(NMTD = sum(Target)) 
-
 table(MTDdt$NMTD)
+
+RateSummdt <- 
+  toxdt %>% group_by(Dose) %>% summarize(Lower = quantile(Rate, 0.025), AvgRate = mean(Rate), Upper = quantile(Rate, 0.975)) 
+
+toxdt %>% ggplot(aes(x=Dose, y=Rate, group=Dose)) + geom_boxplot(outlier.shape = NA) + 
+  scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") + geom_hline(yintercept = target_prob)
