@@ -25,7 +25,7 @@ ToxClassGen <- function(dosevec, target_prob, nscenarios, muvec, sigmavec){
       comp2 <- qnorm(2 * target_prob - ratevec[MTD_index]) - qnorm(ratevec[MTD_index])
       comp3 <- (qnorm(ratevec[MTD_index]) < qnorm(target_prob))
       e2 <- rnorm(1, mean = muvec[2], sd = sigmavec[3])
-      ratevec[MTD_index+1] <- pnorm(comp1 + comp2 * comp3 + e1^2)
+      ratevec[MTD_index+1] <- pnorm(comp1 + comp2 * comp3 + e2^2)
     }
     
     #step 4: sequentially generate the DLT rates for remaining dose levels

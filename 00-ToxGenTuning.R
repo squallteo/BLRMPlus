@@ -1,5 +1,6 @@
 library(ggplot2)
 library(tidyverse)
+set.seed(712)
 
 source("00-DEFunctions.R")
 
@@ -10,7 +11,7 @@ n_display <- 10
 
 #############
 
-toxdt <- ToxClassGen(dosevec, target_prob, nscenarios = 10000, muvec = c(0.2, 0.2), sigmavec <- c(0.1, 0.5, 0.5))
+toxdt <- ToxClassGen(dosevec, target_prob, nscenarios = 100, muvec = c(0.2, 0.2), sigmavec <- c(0.2, 0.4, 0.4))
 
 if(n_display > 0){
   toxdt %>% filter(Sim <= n_display) %>%
