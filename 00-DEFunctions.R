@@ -1,6 +1,7 @@
 ToxClassGen <- function(dosevec, target_prob, nscenarios, muvec, sigmavec){
 #Generate a class of dose-toxicity scenario originally proposed in Paoletti et al (2004), also elaborated in Liu and Yuan (2015) BOIN paper
-#
+#sigmavec: argument 1 - sd for the deviation from target toxicity rate at MTD; argument 2: sd of deviation to generate DLT rates below MTD; argument 3: sd of deviation to generate DLT rates above MTD
+#muvec: argument 1 - mean of deviation to generate DLT rates below MTD; argument 2 - mean of deviation to generate DLT rates above MTD
   library(tidyverse)
   
   for(s in 1:nscenarios){
@@ -9,7 +10,7 @@ ToxClassGen <- function(dosevec, target_prob, nscenarios, muvec, sigmavec){
     MTD <- sample(dosevec,1)
     MTD_index <- which(dosevec == MTD)
     
-    #step 2: genearte the DLT rate at MTD
+    #step 2: generate the DLT rate at MTD
     ratevec[MTD_index] <- pnorm(rnorm(1, mean = qnorm(target_prob), sd = sigmavec[1]))
     
     #step 3: generate the DLT rate(s) at doses adjacent to MTD, subject to the constraint that DLT rate of MTD is closest to the target probability
