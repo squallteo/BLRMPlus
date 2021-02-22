@@ -1,6 +1,6 @@
 library(ggplot2)
 library(tidyverse)
-# set.seed(712)
+set.seed(113)
 
 source("00-DEFunctions.R")
 
@@ -11,7 +11,7 @@ n_display <- 15
 
 #############
 
-toxdt <- ToxClassGen(dosevec, target_prob, nscenarios = 1000, muvec = c(0.2, 0.2), sigmavec <- c(0.2, 0.3, 0.4))
+toxdt <- ToxClassGen(dosevec, target_prob, nscenarios = 1000, muvec = c(0.2, 0.2), sigmavec <- c(0.1, 0.3, 0.4))
 
 if(n_display > 0){
   toxdt %>% filter(Sim <= n_display) %>%
@@ -31,3 +31,5 @@ RateSummdt <-
 
 toxdt %>% ggplot(aes(x=Dose, y=Rate, group=Dose)) + geom_boxplot(outlier.shape = NA) + 
   scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") + geom_hline(yintercept = target_prob)
+
+# write.csv(toxdt, "ToxScenarios.csv", row.names = F)

@@ -1,20 +1,15 @@
-package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "foreach")
+package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "doParallel")
 lapply(package2load, require, character.only = TRUE)
 
 source("00-JAGSModel.R")
 source("00-DEFunctions.R")
 
-set.seed(712)
+nsim <- 10
 
-nsim <- 3
+toxdt <- read_csv("ToxScenarios.csv", col_names = T)
 
-# toxdt <- read_excel("DevData.xlsx", sheet = "toxdt") #toxicity scenario
-# DoseProv <- toxdt$Dose
-# Generate the class of tox scenarios
-DoseProv <- c(5, 10, 25, 50, 100, 200, 400)
-DoseRef <- 50
-target_tox <- 0.25
-toxdt <- ToxClassGen(dosevec = DoseProv, target_prob = target_tox, nscenarios = nsim, muvec = c(0.2, 0.2), sigmavec <- c(0.2, 0.4, 0.4))
+DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
+DoseRef <- 100
 
 Pint_BLRM <- c(0, 0.2, 0.3, 1)
 Nmax <- 45
@@ -25,18 +20,24 @@ cohort_size <- 3
 #Prior distributions
 prior_ab <- c(-0.693, 0, 2, 1, 0)
 
+ncores <- min(parallel::detectCores()-1, 40)
+cl <- makeCluster(ncores)
+registerDoParallel(cl)
+######################################################
+######################################################
+######################################################
+toxdt <- toxdt %>% mutate(MTDflag = (Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])*1)
 
-######################################################
-######################################################
-######################################################
-MTDvec <- rep(0, nsim)
-
-for(s in 1:nsim){
+# MTDvec <- rep(0, nsim)
+resultdt <-
+foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
+  set.seed(s+712)
   Dose_curr <- DoseProv[1]
   cumdt <- tibble(Dose = DoseProv, Ntox = 0, Npat = 0, Current = 0)
   stopcode <- 0
   cohortdt_s <- tibble(Dose = 0, Ntox = 0, Npat = 0, cohort = 0)
   cohort_index <- 1
+  MTD <- 0
   
   while(stopcode==0){
     toxrate <- toxdt %>% filter(Dose==Dose_curr & Sim==s)
@@ -66,30 +67,27 @@ for(s in 1:nsim){
     
     #continue to next cohort
     if(stopcode == 0){
-      action <- action_BLRM(BLRM_prob, ewoc)
+      action <- action_d1(BLRM_prob, ewoc)
       Dose_next <- DoseProv[which(DoseProv == Dose_curr) + action]
       cumdt <- cumdt %>% mutate(Current = (Dose==Dose_next)*1)
       Dose_curr <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
     }
     #stop for reaching maximum sample size
     if(stopcode == 1){
-      MTDvec[s] <- NA
+      MTD <- NA
     }
     #stop for declaring MTD
     if(stopcode == 2){
-      MTDvec[s] <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
+      MTD <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
     }
     #stop because all doses are toxic
     if(stopcode == 3){
-      MTDvec[s] <- -1
+      MTD <- -1
     }
   }
   
-  if(s==1){
-    cohortdt <- cohortdt_s %>% mutate(sim = s)
-  }
-  else{
-    cohortdt <- rbind(cohortdt, cohortdt_s %>% mutate(sim = s))
-  } 
+  cohortdt_s <- cohortdt_s %>% mutate(MTD=MTD)
+
 }
 
+# stopCluster(cl)
