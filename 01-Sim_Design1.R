@@ -6,7 +6,7 @@ source("00-DEFunctions.R")
 
 nsim <- 10
 
-toxdt <- read_csv("ToxScenarios.csv", col_names = T)
+toxdt <- as_tibble(read_csv("ToxScenarios.csv", col_names = T))
 
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
@@ -26,7 +26,14 @@ registerDoParallel(cl)
 ######################################################
 ######################################################
 ######################################################
-toxdt <- toxdt %>% mutate(MTDflag = (Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])*1)
+toxdt %>% group_by("Sim") %>% summarize(minRate=min(Rate), maxRate=max(Rate))
+  h
+
+
+tt <- toxdt %>% group_by(Sim) %>% mutate(MTDflag = (Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])*1,
+                                         AllToxic=all(Rate >= Pint_BLRM[3]))
+         
+         , AllUnder=(max(Rate) < Pint_BLRM[2]))
 
 # MTDvec <- rep(0, nsim)
 resultdt <-
@@ -86,8 +93,22 @@ foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbi
     }
   }
   
-  cohortdt_s <- cohortdt_s %>% mutate(MTD=MTD)
+  cohortdt_s <- cohortdt_s %>% filter(Dose>0) %>% mutate(Sim=s, MTD=MTD)
 
 }
 
 # stopCluster(cl)
+
+
+MTDdt <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
+toxdt %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDdt, by = "Sim") %>% arrange(Sim, Dose) %>% 
+  #some house-keeping to handle: (1) no MTD in the scenario and (2) No MTD (NA) identified in simulation
+  mutate(Dose=ifelse(is.na(Dose), 0, Dose), MTD=ifelse(is.na(MTD), ))
+
+%>%  mutate(Hit=(Dose==MTD))
+
+ %>%
+  group_by(Sim) %>% mutate(MTDFound=any(Hit))
+
+
+resultdt %>% group_by(Sim, Dose) %>% summarize_at(c("Ntox", "Npat"), sum)
