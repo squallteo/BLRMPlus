@@ -6,7 +6,7 @@ source("00-DEFunctions.R")
 
 nsim <- 10
 
-toxdt <- as_tibble(read_csv("ToxScenarios.csv", col_names = T))
+toxdt <- read_csv("ToxScenarios.csv", col_names = T)
 
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
@@ -26,16 +26,12 @@ registerDoParallel(cl)
 ######################################################
 ######################################################
 ######################################################
-toxdt %>% group_by("Sim") %>% summarize(minRate=min(Rate), maxRate=max(Rate))
-  h
+#house-keeping of toxdt
+#WTF group_by doesn't work with summarize??? Need to figure out. 
+tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
+tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
+toxdt <- toxdt %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3]))
 
-
-tt <- toxdt %>% group_by(Sim) %>% mutate(MTDflag = (Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])*1,
-                                         AllToxic=all(Rate >= Pint_BLRM[3]))
-         
-         , AllUnder=(max(Rate) < Pint_BLRM[2]))
-
-# MTDvec <- rep(0, nsim)
 resultdt <-
 foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
   set.seed(s+712)
@@ -101,14 +97,12 @@ foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbi
 
 
 MTDdt <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
-toxdt %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDdt, by = "Sim") %>% arrange(Sim, Dose) %>% 
+toxdt %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDdt, by = "Sim") %>% arrange(Sim, Dose) 
+%>% 
   #some house-keeping to handle: (1) no MTD in the scenario and (2) No MTD (NA) identified in simulation
   mutate(Dose=ifelse(is.na(Dose), 0, Dose), MTD=ifelse(is.na(MTD), ))
 
-%>%  mutate(Hit=(Dose==MTD))
 
- %>%
-  group_by(Sim) %>% mutate(MTDFound=any(Hit))
 
 
 resultdt %>% group_by(Sim, Dose) %>% summarize_at(c("Ntox", "Npat"), sum)
