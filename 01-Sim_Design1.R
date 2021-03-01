@@ -4,7 +4,7 @@ lapply(package2load, require, character.only = TRUE)
 source("00-JAGSModel.R")
 source("00-DEFunctions.R")
 
-nsim <- 10
+nsim <- 1000
 
 toxdt <- read_csv("ToxScenarios.csv", col_names = T)
 
@@ -26,15 +26,11 @@ registerDoParallel(cl)
 ######################################################
 ######################################################
 ######################################################
-#house-keeping of toxdt
-#WTF group_by doesn't work with summarize??? Need to figure out. 
-tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
-tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
-toxdt <- toxdt %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3]))
+t0 <- Sys.time()
 
 resultdt <-
 foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
-  set.seed(s+712)
+  set.seed(s+113)
   Dose_curr <- DoseProv[1]
   cumdt <- tibble(Dose = DoseProv, Ntox = 0, Npat = 0, Current = 0)
   stopcode <- 0
@@ -93,16 +89,24 @@ foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbi
 
 }
 
+t1 <- Sys.time()
 # stopCluster(cl)
+(dur <- t1 - t0)
+
+#MTD accuracy
+MTDResult <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
+#house-keeping of toxdt
+#WTF group_by doesn't work with summarize??? Need to figure out. 
+tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
+tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
+
+MTDHitdt <- toxdt %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])) %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDResult, by = "Sim") %>% 
+  arrange(Sim, Dose) %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDHit = (Dose==MTD)) %>%
+  mutate(MTDHit = ifelse(!is.na(MTDHit), MTDHit, ifelse((MTD==-1 & AllToxic) | (is.na(MTD) & AllUnder), TRUE, FALSE))) %>% filter(MTDHit)
+
+length(unique(MTDHitdt$Sim))/nsim
 
 
-MTDdt <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
-toxdt %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDdt, by = "Sim") %>% arrange(Sim, Dose) 
-%>% 
-  #some house-keeping to handle: (1) no MTD in the scenario and (2) No MTD (NA) identified in simulation
-  mutate(Dose=ifelse(is.na(Dose), 0, Dose), MTD=ifelse(is.na(MTD), ))
 
-
-
-
-resultdt %>% group_by(Sim, Dose) %>% summarize_at(c("Ntox", "Npat"), sum)
+#Subjects at each dose level, but is this useful at all with this dose-toxicity generating mechanism?
+# resultdt %>% group_by(Sim, Dose) %>% summarize_at(c("Ntox", "Npat"), sum)
