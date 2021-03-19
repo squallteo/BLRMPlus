@@ -1,40 +1,22 @@
-package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "foreach")
-lapply(package2load, require, character.only = TRUE)
-
-source("00-JAGSModel.R")
-source("00-DEFunctions.R")
-
-set.seed(712)
-
-toxdt <- read_excel("DevData.xlsx", sheet = "toxdt") #toxicity scenario
-
-DoseProv <- toxdt$Dose
-DoseRef <- 50
-Nmax <- 45
-Pint_BLRM <- c(0, 0.2, 0.3, 1)
-target_prob <- 0.4
-ewoc <- 0.3
-cohort_size <- 3
-
-#Prior distributions
-prior_ab <- c(-0.693, 0, 2, 1, 0)
-
-nsim <- 3
+source("01-CommonSimSpec.R")
 ######################################################
 ######################################################
 ######################################################
-MTDvec <- rep(0, nsim)
+t0 <- Sys.time()
 
-for(s in 1:nsim){
+resultdt <-
+foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
+  set.seed(s+113)
   Dose_curr <- DoseProv[1]
   cumdt <- tibble(Dose = DoseProv, Ntox = 0, Npat = 0, Current = 0)
   stopcode <- 0
   cohortdt_s <- tibble(Dose = 0, Ntox = 0, Npat = 0, cohort = 0)
   cohort_index <- 1
+  MTD <- 0
   
   while(stopcode==0){
-    toxrate <- toxdt %>% filter(Dose==Dose_curr)
-    Ntox_new <- rbinom(n = 1, size = cohort_size, prob = toxrate$prob)
+    toxrate <- toxdt %>% filter(Dose==Dose_curr & Sim==s)
+    Ntox_new <- rbinom(n = 1, size = cohort_size, prob = toxrate$Rate)
     
     newdt <-tibble(Dose = Dose_curr, Ntox_new, Npat_new = cohort_size)
     cohortdt_s <- rbind(cohortdt_s, 
@@ -54,40 +36,53 @@ for(s in 1:nsim){
                      n.chains = 3, n.burnin = 10000, n.iter = 50000, progress.bar = "none")
     PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
     
-    probdt <- interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv)
-    upmdt <- probdt / (rep(1, length(DoseProv)) %o% diff(Pint_BLRM) )
-    
-    d2_prob <- cbind(cumdt, probdt)
-    d2_upm <- cbind(cumdt, upmdt)
+    BLRM_prob <- cbind(cumdt, interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv))
     stopcode <- checkstop_BLRM(BLRM_prob, target.prob = target_prob, max.subj = Nmax, ewoc = ewoc)
     cohort_index <- cohort_index + 1
     
     #continue to next cohort
     if(stopcode == 0){
-      action <- action_BLRM(BLRM_prob, ewoc)
+      action <- action_d2(BLRM_prob, ewoc)
       Dose_next <- DoseProv[which(DoseProv == Dose_curr) + action]
       cumdt <- cumdt %>% mutate(Current = (Dose==Dose_next)*1)
       Dose_curr <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
     }
     #stop for reaching maximum sample size
     if(stopcode == 1){
-      MTDvec[s] <- NA
+      MTD <- NA
     }
     #stop for declaring MTD
     if(stopcode == 2){
-      MTDvec[s] <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
+      MTD <- as.numeric(cumdt %>% filter(Current==1) %>% select(Dose))
     }
     #stop because all doses are toxic
     if(stopcode == 3){
-      MTDvec[s] <- -1
+      MTD <- -1
     }
   }
   
-  if(s==1){
-    cohortdt <- cohortdt_s %>% mutate(sim = s)
-  }
-  else{
-    cohortdt <- rbind(cohortdt, cohortdt_s %>% mutate(sim = s))
-  } 
+  cohortdt_s <- cohortdt_s %>% filter(Dose>0) %>% mutate(Sim=s, MTD=MTD)
+
 }
 
+t1 <- Sys.time()
+# stopCluster(cl)
+(dur <- t1 - t0)
+
+#MTD accuracy
+MTDResult <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
+#house-keeping of toxdt
+#WTF group_by doesn't work with summarize??? Need to figure out. 
+tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
+tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
+
+MTDHitdt <- toxdt %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])) %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDResult, by = "Sim") %>% 
+  arrange(Sim, Dose) %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDHit = (Dose==MTD)) %>%
+  mutate(MTDHit = ifelse(!is.na(MTDHit), MTDHit, ifelse((MTD==-1 & AllToxic) | (is.na(MTD) & AllUnder), TRUE, FALSE))) %>% filter(MTDHit)
+
+length(unique(MTDHitdt$Sim))/nsim
+
+
+
+#Subjects at each dose level, but is this useful at all with this dose-toxicity generating mechanism?
+# resultdt %>% group_by(Sim, Dose) %>% summarize_at(c("Ntox", "Npat"), sum)

@@ -104,7 +104,30 @@ action_BLRM = function(probdt, ewoc = 0.25){
 }
 
 #New design 1 functions
-action_d1 = function(probdt, ewoc = 0.25){
+#f_bnd: feasibility bound in Babb et al. (1998)
+action_d1 = function(probdt, ewoc = 0.25, f_bnd = 0.25){
+  curr_dose_idx <- which(probdt$Current==1)
+  #rule to override EWOC
+  ovrd <- 0
+  if(curr_dose_idx != nrow(probdt)){
+    
+    tt1 <- probdt$Punder[curr_dose_idx] * f_bnd
+    tt2 <- probdt$Pover[curr_dose_idx] * (1 - f_bnd)
+    ovrd <- (tt1 > tt2)
+    action <- 1
+  }
+  
+  if(ovrd==0){
+    next_dose <- probdt %>% filter(Pover < ewoc) %>% filter(Ptarget == max(Ptarget)) %>% select(Dose)
+    curr_dose <- probdt %>% filter(Current==1) %>% select(Dose)
+    action <- -1*(next_dose < curr_dose) + 0*(next_dose == curr_dose) + 1*(next_dose > curr_dose)
+  }
+  
+  return(action)
+}
+
+#New design 2 functions
+action_d2 = function(probdt, ewoc = 0.25){
   curr_dose_idx <- which(probdt$Current==1)
   #rule to override EWOC
   ovrd <- 0
@@ -125,8 +148,8 @@ action_d1 = function(probdt, ewoc = 0.25){
   return(action)
 }
 
-#New design 2 functions
-action_d2 = function(probdt, Pint, ewoc = 0.25){
+#New design 3 functions
+action_d3 = function(probdt, Pint, ewoc = 0.25){
   browser()
   upmdt <- probdt / diff(Pint_BLRM) %x% t(rep(1, length(DoseProv)))
   
