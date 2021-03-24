@@ -111,9 +111,9 @@ action_d1 = function(probdt, ewoc = 0.25, f_bnd = 0.25){
   ovrd <- 0
   if(curr_dose_idx != nrow(probdt)){
     
-    tt1 <- probdt$Punder[curr_dose_idx] * f_bnd
-    tt2 <- probdt$Pover[curr_dose_idx] * (1 - f_bnd)
-    ovrd <- (tt1 > tt2)
+    loss_under <- probdt$Punder[curr_dose_idx] * f_bnd
+    loss_over <- probdt$Pover[curr_dose_idx] * (1 - f_bnd)
+    ovrd <- (loss_under > loss_over)
     action <- 1
   }
   
