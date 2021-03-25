@@ -4,7 +4,7 @@ lapply(package2load, require, character.only = TRUE)
 source("00-JAGSModel.R")
 source("00-DEFunctions.R")
 
-nsim <- 1000
+nsim <- 10
 
 tt <- read_csv("ToxScenarios.csv", col_names = T)
 for(i in 1:nsim){
@@ -17,7 +17,7 @@ DoseRef <- 100
 
 Pint_BLRM <- c(0, 0.2, 0.3, 1)
 Nmax <- 45
-target_prob <- 0.4
+target_prob <- 0.3
 ewoc <- 0.3
 cohort_size <- 3
 
@@ -26,7 +26,7 @@ prior_ab <- c(-0.693, 0, 2, 1, 0)
 
 #dose escalation design
 #0: regular BLRM with EWOC; 1: design 1
-design <- 0
+design <- 2
 
 ncores <- min(parallel::detectCores()-1, 40)
 cl <- makeCluster(ncores)
@@ -113,16 +113,19 @@ t1 <- Sys.time()
 
 #MTD accuracy
 MTDResult <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
-#house-keeping of toxdt
-#WTF group_by doesn't work with summarize??? Need to figure out. 
-tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
-tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
 
-MTDHitdt <- toxdt %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])) %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDResult, by = "Sim") %>% 
-  arrange(Sim, Dose) %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDHit = (Dose==MTD)) %>%
-  mutate(MTDHit = ifelse(!is.na(MTDHit), MTDHit, ifelse((MTD==-1 & AllToxic) | (is.na(MTD) & AllUnder), TRUE, FALSE))) %>% filter(MTDHit)
-
-length(unique(MTDHitdt$Sim))/nsim
+table(MTDResult$MTD, useNA = "always")
+# #house-keeping of toxdt
+# #WTF group_by doesn't work with summarize??? Need to figure out. 
+toxdt
+# tt1 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", min) %>% mutate(AllToxic=(Rate>=Pint_BLRM[3])) %>% select(-Rate)
+# tt2 <- toxdt %>% group_by(Sim) %>% summarize_at("Rate", max) %>% mutate(AllUnder=(Rate<Pint_BLRM[2])) %>% select(-Rate)
+# 
+# MTDHitdt <- toxdt %>% mutate(MTDflag=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3])) %>% filter(MTDflag==1 & Sim <= nsim) %>% full_join(MTDResult, by = "Sim") %>% 
+#   arrange(Sim, Dose) %>% left_join(tt1, by="Sim") %>% left_join(tt2, by="Sim") %>% mutate(MTDHit = (Dose==MTD)) %>%
+#   mutate(MTDHit = ifelse(!is.na(MTDHit), MTDHit, ifelse((MTD==-1 & AllToxic) | (is.na(MTD) & AllUnder), TRUE, FALSE))) %>% filter(MTDHit)
+# 
+# length(unique(MTDHitdt$Sim))/nsim
 
 
 
