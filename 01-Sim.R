@@ -6,7 +6,7 @@ lapply(package2load, require, character.only = TRUE)
 source("00-JAGSModel.R")
 source("00-DEFunctions.R")
 
-nsim <- 1000
+nsim <- 500
 
 tt <- read_csv("ToxScenarios.csv", col_names = T)
 for(i in 1:nsim){
@@ -42,7 +42,7 @@ t0 <- Sys.time()
 for(d in design){
   resultdt <-
     foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
-      set.seed(s+113)
+      set.seed(s+712)
       Dose_curr <- DoseProv[1]
       cumdt <- tibble(Dose = DoseProv, Ntox = 0, Npat = 0, Current = 0)
       stopcode <- 0
