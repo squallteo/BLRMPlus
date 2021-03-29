@@ -3,7 +3,7 @@ rm(list=ls())
 package2load <- c("R2jags", "tidyverse", "readxl", "plyr", "doParallel")
 lapply(package2load, require, character.only = TRUE)
 
-source("00-JAGSModel.R")
+source("00-BLRM.bugs")
 source("00-DEFunctions.R")
 
 nsim <- 1000
@@ -13,9 +13,9 @@ scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
 
-Pint_BLRM <- c(0, 0.2, 0.3, 1)
+# Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
+Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
 Nmax <- 45
-target_prob <- 0.3
 ewoc <- 0.3
 cohort_size <- 3
 
@@ -23,7 +23,9 @@ cohort_size <- 3
 prior_ab <- c(-0.693, 0, 2, 1, 0)
 
 #dose escalation design
-#0: regular BLRM with EWOC; 1: design 1
+#0: regular BLRM with EWOC; 
+#1: Babb et al like design; 
+#2: relative dose strength design
 design <- 0:2
 
 ncores <- min(parallel::detectCores()-1, 40)
@@ -33,8 +35,6 @@ registerDoParallel(cl)
 ######################################################
 ######################################################
 ######################################################
-t0 <- Sys.time()
-
 for(r in unique(scenariodt$Scenario)){
   tt <- scenariodt %>% filter(Scenario==r)
   for(i in 1:nsim){
@@ -44,7 +44,7 @@ for(r in unique(scenariodt$Scenario)){
   
   for(d in design){
     resultdt <-
-      foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind) %dopar% {
+      foreach(s = 1:nsim, .packages = c("R2jags", "tidyverse", "plyr"), .combine = rbind, .errorhandling = "remove") %dopar% {
         set.seed(s+712)
         Dose_curr <- DoseProv[1]
         cumdt <- tibble(Dose = DoseProv, Ntox = 0, Npat = 0, Current = 0)
@@ -112,11 +112,9 @@ for(r in unique(scenariodt$Scenario)){
         cohortdt_s <- cohortdt_s %>% filter(Dose>0) %>% mutate(Sim=s, MTD=MTD)
         
       }
-    
-    t1 <- Sys.time()
-    
-    (dur <- t1 - t0)
-    
+    #output R workspace and spreadsheet
+    filename <- paste(r, "_design", d, sep="")
+    save.image(file=paste(filename,".RData",sep=""))
     #################################
     #################################
     #################################
@@ -142,11 +140,9 @@ for(r in unique(scenariodt$Scenario)){
     #Average #subj and DLT rate overall
     overalldt <- resultdt %>% group_by(Sim) %>% summarize_at(c("Npat","Ntox"), sum) %>% mutate(DLTRate = Ntox/Npat)
     
-    outputdt <- dosedt %>% mutate(Noverall=mean(overalldt$Npat), DLTRate=mean(overalldt$DLTRate))
+    outputdt <- dosedt %>% mutate(Noverall=mean(overalldt$Npat), DLTRate=mean(overalldt$DLTRate), FinishedSim=nrow(MTDResult))
     
     #output R workspace and spreadsheet
-    filename <- paste(r, "_design", d, sep="")
-    # save.image(file=paste(filename,".RData",sep=""))
     write_csv(outputdt, paste(filename,".csv",sep=""))
     
   }
