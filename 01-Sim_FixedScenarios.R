@@ -121,7 +121,7 @@ for(r in unique(scenariodt$Scenario)){
     #summarize results
     #MTD accuracy
     MTDResult <- resultdt %>% filter(cohort==1) %>% select(c("Sim", "MTD"))
-    tt <- table(MTDResult$MTD, useNA="no")/nsim
+    tt <- table(MTDResult$MTD, useNA="no")/nrow(MTDResult)
     
     freqdt <- tibble(Dose=as.integer(names(tt)), MTDFreq = tt)
     
