@@ -13,8 +13,8 @@ scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
 
-# Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
-Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
+Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
+# Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
 Nmax <- 45
 ewoc <- 0.3
 cohort_size <- 3
@@ -23,10 +23,12 @@ cohort_size <- 3
 prior_ab <- c(-0.693, 0, 2, 1, 0)
 
 #dose escalation design
-#0: regular BLRM with EWOC; 
-#1: Babb et al like design; 
-#2: relative dose strength design
-design <- 0:2
+#0: original BLRM with EWOC; 
+#1: Babb et al like design, based on toxicity interval
+#2: relative dose strength design, based on toxicity interval
+#3: Babb et al like design, based on UPM
+#4: relative dose strength design, based on UPM
+design <- 4
 
 ncores <- min(parallel::detectCores()-1, 40)
 cl <- makeCluster(ncores)
@@ -76,7 +78,14 @@ for(r in unique(scenariodt$Scenario)){
           PrTox_mcmc <- as_tibble(jags_obj$BUGSoutput$sims.matrix) %>% select(starts_with("Pr.Tox"))
           
           BLRM_prob <- cbind(cumdt, interval_prob(PrTox_mcmc, Pint_BLRM, DoseProv))
-          stopcode <- checkstop_BLRM(BLRM_prob, target.prob = target_prob, max.subj = Nmax, ewoc = ewoc)
+          
+          stopcode <- checkstop_TI(BLRM_prob, target.prob = target_prob, max.subj = Nmax, ewoc = ewoc)
+          # if(d <= 2){#designs based on toxicity interval
+          #   stopcode <- checkstop_TI(BLRM_prob, target.prob = target_prob, max.subj = Nmax, ewoc = ewoc)
+          # }
+          # if(d > 2){#designs based on UPM
+          #   checkstop_UPM(BLRM_prob, Pint_BLRM, target.upm = 3, max.subj = Nmax, ewoc = ewoc)
+          # }
           cohort_index <- cohort_index + 1
           
           #continue to next cohort
@@ -89,6 +98,12 @@ for(r in unique(scenariodt$Scenario)){
             }
             if(d==2){
               action <- action_d2(BLRM_prob, ewoc)
+            }
+            if(d==3){
+              action <- action_d3(BLRM_prob, Pint_BLRM, ewoc, f_bnd = 0.25)
+            }
+            if(d==4){
+              action <- action_d4(BLRM_prob, Pint_BLRM, ewoc)
             }
             
             Dose_next <- DoseProv[which(DoseProv == Dose_curr) + action]
