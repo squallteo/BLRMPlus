@@ -10,8 +10,8 @@ source("00-DEFunctions.R")
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
 
-Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
-# Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
+# Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
+Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
 Nmax <- 45
 ewoc <- 0.3
 cohort_size <- 3
@@ -27,8 +27,8 @@ prior_ab <- c(-0.693, 0, 2, 1, 0)
 #4: relative dose strength design, based on UPM
 design <- 0:4
 
-#Paoletti class tox scenarios and house-keeping
-toxdt <- read_csv("PaolettiClass.csv") %>% group_by(Sim) %>% mutate(AllToxic=all(Rate>=Pint_BLRM[3]), AllUnder=all(Rate<Pint_BLRM[2]),
+#Clertant class tox scenarios and house-keeping
+toxdt <- read_csv("ClertantClass.csv") %>% group_by(Sim) %>% mutate(AllToxic=all(Rate>=Pint_BLRM[3]), AllUnder=all(Rate<Pint_BLRM[2]),
                                                                     Target=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3]))
 #part 1: has MTD
 part1 <- toxdt %>% filter(Target) %>% rename(TrueMTD=Dose) %>% select(Sim, TrueMTD)
@@ -128,7 +128,7 @@ for(d in design){
     } #end of parallel computing
   
   #output R workspace and spreadsheet
-  filename <- paste("Paoletti_design", d, sep="")
+  filename <- paste("Clertant_design", d, sep="")
   save.image(file=paste(filename,".RData",sep=""))
   #################################
   #################################

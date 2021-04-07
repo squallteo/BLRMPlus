@@ -28,7 +28,7 @@ library(tidyverse)
 set.seed(113)
 dosevec <- c(10, 25, 50, 100, 200, 400, 800)
 target_prob <- 0.25
-Pint_BLRM <- c(0, 0.2, 0.3, 1)
+Pint_BLRM <- c(0, 0.16, 0.33, 1)
 n_display <- 3:20
 
 toxdt <- ClertantClassGen(dosevec, target_prob, nscenario=1000)
@@ -52,4 +52,4 @@ RateSummdt <-
 toxdt %>% ggplot(aes(x=Dose, y=Rate, group=Dose)) + geom_boxplot(outlier.shape = NA) + 
   scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") + geom_hline(yintercept = Pint_BLRM[2:3])
 
-write_csv(toxdt, "ClertantClass.csv")
+# write_csv(toxdt, "ClertantClass.csv")
