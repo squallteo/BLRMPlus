@@ -4,6 +4,7 @@ library(readxl)
 rootpath <- getwd()
 
 interval <- "16_33"
+Pint_BLRM <- c(0, 0.16, 0.33, 1)
 scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
 design <- 0:4
 
@@ -28,7 +29,59 @@ for(s in unique(scenariodt$Scenario)){
   out1 <- dosedt %>% mutate(Scenario=s)
   out2 <- overalldt %>% mutate(Scenario=s)
   
-  write_csv(out1, paste("Fixed_", s, "_dose.csv", sep=""))
-  write_csv(out2, paste("Fixed_", s, "_overall.csv", sep=""))
+  if(s==scenariodt$Scenario[1]){
+    bydose <- rbind(out1)
+    overall <- rbind(out2)
+  }
+  else{
+    bydose <- rbind(bydose, out1)
+    overall <- rbind(overall, out2)
+  }
+  # write_csv(out1, paste("Fixed_", s, "_dose.csv", sep=""))
+  # write_csv(out2, paste("Fixed_", s, "_overall.csv", sep=""))
 }
 
+#Generate a 3*2 plot, rows are for scenarios, two columns: MTD accuracy and N treated at MTD
+MTDdt <-
+scenariodt %>% group_by(Scenario)%>% mutate(MTD=(Rate < Pint_BLRM[3] & Rate >= Pint_BLRM[2])) %>% filter(MTD)
+
+design_levels <- c("Orig BLRM", "Design 1", "Design 2", "Design 3", "Design 4")
+plotdt <- bydose %>% full_join(MTDdt, by = c("Scenario", "Dose")) %>% filter(MTD) %>% 
+  group_by(Scenario, Design) %>% summarize_at(c("MTDFreq", "Npat"), sum) %>% mutate(Design = factor(Design)) %>%
+  mutate(Design = fct_recode(Design, 
+                             "Orig BLRM" = "0",
+                             "Design 1" = "1",
+                             "Design 2" = "2",
+                             "Design 3" = "3",
+                             "Design 4" = "4")
+         )
+
+#MTD accuracy plots
+for(s in unique(scenariodt$Scenario)){
+  p <-
+  ggplot(plotdt %>% filter(Scenario==s), aes(x=Design, y=MTDFreq, fill = Design)) + 
+    geom_bar(stat = "identity", position=position_dodge()) + guides(fill=FALSE) +
+    geom_text(aes(label=MTDFreq), vjust=-0.3, size=5) +
+    scale_y_continuous(limits=c(0,1), breaks = seq(0,1,0.1), name = "MTD Accuracy") + xlab("") +
+    scale_fill_grey() + theme_bw() + ggtitle(s) +
+    theme(axis.text = element_text(size = 15),
+          axis.title = element_text(size = 15),
+          plot.title = element_text(hjust = 0.5, vjust = -8, size = 20)
+    )
+  print(p)
+}
+
+#N treated at MTD
+for(s in unique(scenariodt$Scenario)){
+  p <-
+    ggplot(plotdt %>% filter(Scenario==s), aes(x=Design, y=Npat, fill = Design)) + 
+    geom_bar(stat = "identity", position=position_dodge()) + guides(fill=FALSE) +
+    geom_text(aes(label=Npat), vjust=-0.3, size=5) +
+    scale_y_continuous(limits=c(0,15), breaks = seq(0,15,1), name = "Avg Patients Treated at MTD") + xlab("") +
+    scale_fill_grey() + theme_bw() + ggtitle(s) +
+    theme(axis.text = element_text(size = 15),
+          axis.title = element_text(size = 15),
+          plot.title = element_text(hjust = 0.5, vjust = -8, size = 20)
+    )
+  print(p)
+}
