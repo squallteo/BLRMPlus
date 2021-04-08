@@ -28,7 +28,7 @@ prior_ab <- c(-0.693, 0, 2, 1, 0)
 #2: relative dose strength design, based on toxicity interval
 #3: Babb et al like design, based on UPM
 #4: relative dose strength design, based on UPM
-design <- 4
+design <- 0:4
 
 ncores <- min(parallel::detectCores()-1, 40)
 cl <- makeCluster(ncores)

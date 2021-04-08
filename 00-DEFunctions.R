@@ -24,8 +24,9 @@ checkstop_TI = function(probdt, target.prob = 0.5, min.subj.MTD = 6, max.subj = 
   Ntotal <- probdt %>% summarize_at("Npat",sum) %>% select(Npat)
   currdt <- probdt %>% filter(Current == 1)
   
-  #target interval probability achieved & EWOC okay
-  cond1 <- (currdt$Ptarget >= target.prob & !currdt$Toxic)
+  max_target <- probdt %>% filter(Npat > 0) %>% summarize_at("Ptarget", max)
+  #target interval probability achieved, recommendation is to stay & EWOC okay 
+  cond1 <- (currdt$Ptarget >= target.prob & !currdt$Toxic & currdt$Ptarget == max_target)
   #minimum number of subjects achieved at MTD
   cond2 <- (currdt$Npat >= min.subj.MTD)
   #maximum number of subjects per strata reached
