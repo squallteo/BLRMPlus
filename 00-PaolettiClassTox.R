@@ -64,18 +64,21 @@ set.seed(113)
 dosevec <- c(10, 25, 50, 100, 200, 400, 800)
 target_prob <- 0.25
 Pint_BLRM <- c(0, 0.2, 0.3, 1)
-n_display <- 3:20
+n_display <- 1:20
 
 #############
 
 toxdt <- PaolettiClassGen(dosevec, target_prob, nscenarios = 1000, muvec = c(0.2, 0.2), sigmavec <- c(0.1, 0.3, 0.4))
 
 if(n_display != 0){
+  paoletti_plot <-
   toxdt %>% filter(Sim %in% n_display) %>%
     ggplot(aes(x=Dose, y=Rate, color=factor(Sim))) + geom_line() + geom_point() + 
     scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") +
-    geom_hline(yintercept = target_prob) + 
+    scale_x_continuous(breaks = dosevec) +
+    geom_hline(yintercept = target_prob) + theme_bw() +
     theme(legend.position = "none")
+  print(paoletti_plot)
 }
 
 MTDdt <- 
@@ -89,4 +92,9 @@ RateSummdt <-
 toxdt %>% ggplot(aes(x=Dose, y=Rate, group=Dose)) + geom_boxplot(outlier.shape = NA) + 
   scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") + geom_hline(yintercept = Pint_BLRM[2:3])
 
-write_csv(toxdt, "PaolettiClass.csv")
+# write_csv(toxdt, "PaolettiClass.csv")
+# 
+# png("Fig_RandomScenarios.png", width = 1800, height = 2400, res = 300)
+# ggpubr::ggarrange(clertant_plot, paoletti_plot, nrow = 2, ncol = 1, labels = c("Clertant Class", "Paoletti Class"))
+# dev.off()
+

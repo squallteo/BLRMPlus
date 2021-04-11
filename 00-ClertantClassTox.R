@@ -29,16 +29,19 @@ set.seed(113)
 dosevec <- c(10, 25, 50, 100, 200, 400, 800)
 target_prob <- 0.25
 Pint_BLRM <- c(0, 0.16, 0.33, 1)
-n_display <- 3:20
+n_display <- 1:20
 
 toxdt <- ClertantClassGen(dosevec, target_prob, nscenario=1000)
 
 if(n_display != 0){
+  clertant_plot <- 
   toxdt %>% filter(Sim %in% n_display) %>%
     ggplot(aes(x=Dose, y=Rate, color=factor(Sim))) + geom_line() + geom_point() + 
     scale_y_continuous(breaks = seq(0, 1,by = 0.1), name = "DLT Rate") +
-    geom_hline(yintercept = target_prob) + 
+    scale_x_continuous(breaks = dosevec) +
+    geom_hline(yintercept = target_prob) + theme_bw() +
     theme(legend.position = "none")
+  print(clertant_plot)
 }
 
 MTDdt <- 
