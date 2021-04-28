@@ -11,6 +11,21 @@ Pint_BLRM <- c(0, 0.16, 0.33, 1)
 scenariodt <- read_csv(paste(randclass,"Class.csv",sep=""))
 design <- 0:4
 
+
+toxdt <- read_csv(paste(randclass,"Class.csv",sep="")) %>% group_by(Sim) %>% 
+  mutate(AllToxic=all(Rate>=Pint_BLRM[3]), AllUnder=all(Rate<Pint_BLRM[2]), 
+         Target=(Rate >= Pint_BLRM[2] & Rate < Pint_BLRM[3]))
+DoseProv <- unique(toxdt$Dose)
+#part 1: has MTD
+part1 <- toxdt %>% filter(Target) %>% rename(TrueMTD=Dose) %>% select(Sim, TrueMTD)
+#part 2: all toxic, MTD = -1
+part2 <- toxdt %>% filter(AllToxic & Dose==DoseProv[1]) %>% mutate(TrueMTD=-1) %>% select(Sim, TrueMTD)
+#part 3: all under, MTD = 999999
+part3 <- toxdt %>% filter(AllUnder & Dose==DoseProv[1]) %>% mutate(TrueMTD=999999) %>% select(Sim, TrueMTD)
+#in all other scenarios, neither all toxic nor under, just no MTD in the interval: MTD=999999
+MTDTrue <- rbind(part1, part2, part3) %>% ungroup() %>% full_join(tibble(Sim=1:length(unique(toxdt$Sim)))) %>% 
+  mutate(TrueMTD=ifelse(is.na(TrueMTD), 999999, TrueMTD)) %>% arrange(Sim, TrueMTD)
+
 for(s in unique(scenariodt$Sim)){
   for(d in design){
     filename <- paste(s, "_design", d, ".csv", sep="")
