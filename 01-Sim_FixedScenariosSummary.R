@@ -4,10 +4,11 @@ library(readxl)
 library(ggpubr)
 rootpath <- getwd()
 
-interval <- "16_33"
-Pint_BLRM <- c(0, 0.16, 0.33, 1)
+# interval <- "16_33";Pint_BLRM <- c(0, 0.16, 0.33, 1)
+interval <- "20_30";Pint_BLRM <- c(0, 0.2, 0.3, 1)
 scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
 design <- 0:4
+maxdose <- 800
 
 for(s in unique(scenariodt$Scenario)){
   for(d in design){
@@ -15,9 +16,16 @@ for(s in unique(scenariodt$Scenario)){
     fullpath <- paste(rootpath, "Results", interval, filename, sep = "/")
     
     resultdt <- read_csv(fullpath)
+    tt <- resultdt %>% filter(MTDFlag=="*")
+    trueMTD <- tt$Dose
+    mLoss <-
+    resultdt %>% mutate(Dose4Loss = ifelse(Dose==-1, 0, Dose),
+                        Loss = abs(Dose4Loss - trueMTD)/maxdose,
+                        Loss = ifelse(Dose>99999, 1, Loss)) %>%
+      mutate(wLoss = MTDFreq*Loss) %>% summarize_at("wLoss", sum)
     
     tt1 <- resultdt %>% select(Dose, MTDFreq, Npat) %>% mutate(Design=d)
-    tt2 <- resultdt %>% filter(Dose==min(Dose)) %>% select(Noverall, DLTRate) %>% mutate(Design=d)
+    tt2 <- resultdt %>% filter(Dose==min(Dose)) %>% select(Noverall, DLTRate) %>% mutate(Design=d, mLoss = mLoss)
     if(d==min(design)){
       dosedt <- rbind(tt1)
       overalldt <- rbind(tt2)
@@ -95,3 +103,4 @@ png("16_33.png", width = 900, height = 1200, res = 100)
 ggarrange(MTDlist[[1]], NMTDlist[[1]], MTDlist[[2]], NMTDlist[[2]], MTDlist[[3]], NMTDlist[[3]],
           nrow = 3, ncol = 2)
 dev.off()
+
