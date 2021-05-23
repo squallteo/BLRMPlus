@@ -18,14 +18,14 @@ for(s in unique(scenariodt$Scenario)){
     resultdt <- read_csv(fullpath)
     tt <- resultdt %>% filter(MTDFlag=="*")
     trueMTD <- tt$Dose
-    mLoss <-
-    resultdt %>% mutate(Dose4Loss = ifelse(Dose==-1, 0, Dose),
-                        Loss = abs(Dose4Loss - trueMTD)/maxdose,
-                        Loss = ifelse(Dose>99999, 1, Loss)) %>%
-      mutate(wLoss = MTDFreq*Loss) %>% summarize_at("wLoss", sum)
+    # mLoss <-
+    # resultdt %>% mutate(Dose4Loss = ifelse(Dose==-1, 0, Dose),
+    #                     Loss = abs(Dose4Loss - trueMTD)/maxdose,
+    #                     Loss = ifelse(Dose>99999, 1, Loss)) %>%
+    #   mutate(wLoss = MTDFreq*Loss) %>% summarize_at("wLoss", sum)
     
     tt1 <- resultdt %>% select(Dose, MTDFreq, Npat) %>% mutate(Design=d)
-    tt2 <- resultdt %>% filter(Dose==min(Dose)) %>% select(Noverall, DLTRate) %>% mutate(Design=d, mLoss = mLoss)
+    tt2 <- resultdt %>% filter(Dose==min(Dose)) %>% select(Noverall, DLTRate) %>% mutate(Design=d)
     if(d==min(design)){
       dosedt <- rbind(tt1)
       overalldt <- rbind(tt2)
