@@ -8,8 +8,7 @@ source("00-DEFunctions.R")
 
 nsim <- 1000
 
-# scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
-scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "All")
+scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
 
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
@@ -159,7 +158,7 @@ for(r in unique(scenariodt$Scenario)){
     outputdt <- dosedt %>% mutate(Noverall=mean(overalldt$Npat), DLTRate=mean(overalldt$DLTRate), FinishedSim=nrow(MTDResult))
     
     #output R workspace and spreadsheet
-    write.csv(outputdt, paste(filename,".csv",sep=""))
+    write_csv(outputdt, paste(filename,".csv",sep=""))
     
   }
 }
