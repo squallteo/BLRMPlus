@@ -4,9 +4,10 @@ library(readxl)
 library(ggpubr)
 rootpath <- getwd()
 
-# interval <- "16_33";Pint_BLRM <- c(0, 0.16, 0.33, 1)
-interval <- "20_30";Pint_BLRM <- c(0, 0.2, 0.3, 1)
-scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
+interval <- "16_33";Pint_BLRM <- c(0, 0.16, 0.33, 1)
+# interval <- "20_30";Pint_BLRM <- c(0, 0.2, 0.3, 1)
+# scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
+scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "All")
 design <- 0:4
 maxdose <- 800
 
@@ -46,8 +47,8 @@ for(s in unique(scenariodt$Scenario)){
     bydose <- rbind(bydose, out1)
     overall <- rbind(overall, out2)
   }
-  # write_csv(out1, paste("Fixed_", s, "_dose.csv", sep=""))
-  # write_csv(out2, paste("Fixed_", s, "_overall.csv", sep=""))
+  write_csv(out1, paste("Fixed_", s, "_dose.csv", sep=""))
+  write_csv(out2, paste("Fixed_", s, "_overall.csv", sep=""))
 }
 
 #Generate a 3*2 plot, rows are for scenarios, two columns: MTD accuracy and N treated at MTD

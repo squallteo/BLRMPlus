@@ -14,8 +14,8 @@ scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "All")
 DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
 
-Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
-# Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
+# Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
+Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
 Nmax <- 45
 ewoc <- 0.3
 cohort_size <- 3
@@ -149,8 +149,7 @@ for(r in unique(scenariodt$Scenario)){
     skeleton <- toxdt %>% select(Sim, Dose)
     Npat_sim <- resultdt %>% group_by(Sim, Dose) %>% summarize_at("Npat", sum) %>% right_join(skeleton, by=c("Sim", "Dose")) %>% arrange(Sim, Dose) %>% 
       mutate(Npat = ifelse(!is.na(Npat), Npat, 0))
-    Npat_avg <- Npat_sim %>% group_by(Dose) %>% summarize_at("Npat", mean)
-    
+    Npat_avg <- Npat_sim %>% group_by(Dose) %>% summarize_at("Npat", sum) %>% mutate(Npat = Npat/nrow(MTDResult))    
     #Results by dose
     dosedt <- MTDAccuracy %>% left_join(Npat_avg, by="Dose")
     #Average #subj and DLT rate overall

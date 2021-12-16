@@ -33,7 +33,17 @@ rate <- expit(linpred)
 
 flatdt <- tibble(Scenario="3: Flat", Dose=d, DLTRate=rate)
 
-plotdt <- rbind(steepdt, sshapedt, flatdt)
+#All safe
+rate <- (5.6 + 0.072*d)/790
+
+allsafedt <- tibble(Scenario="4: All Safe", Dose=d, DLTRate=rate)
+
+#All toxic
+rate <- (313 + 0.3*d)/790
+
+alltoxicdt <- tibble(Scenario="5: All Toxic", Dose=d, DLTRate=rate)
+
+plotdt <- rbind(steepdt, sshapedt, flatdt, allsafedt, alltoxicdt)
 pointdt <- plotdt %>% filter(Dose %in% DoseProv)
 
 ggplot(plotdt, aes(x=Dose, y=DLTRate, linetype=Scenario)) + geom_line(size=1.5) + 
@@ -41,15 +51,15 @@ ggplot(plotdt, aes(x=Dose, y=DLTRate, linetype=Scenario)) + geom_line(size=1.5) 
   scale_x_continuous(breaks = DoseProv) + scale_y_continuous(breaks = seq(0,1,0.1)) + theme_bw() +
   theme(axis.text.x = element_text(angle = 90),
         legend.position = c(0.9,0.2))
-  
 
 
 
 
-ratedt <- tibble(Dose = DoseProv, Rate = round(expit(),3))
-ggplot(ratedt,aes(Dose, Rate, label=Rate)) + geom_line() + geom_point() + geom_text(nudge_x = 2)
 
-ratedt <- readxl::read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
-ggplot(ratedt,aes(Dose, Rate, color = Scenario)) + geom_line() + geom_point()
+# ratedt <- tibble(Dose = DoseProv, Rate = round(expit(),3))
+# ggplot(ratedt,aes(Dose, Rate, label=Rate)) + geom_line() + geom_point() + geom_text(nudge_x = 2)
+# 
+# ratedt <- readxl::read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
+# ggplot(ratedt,aes(Dose, Rate, color = Scenario)) + geom_line() + geom_point()
 
 # write_csv(ratedt, "ToxScenarios.csv")
