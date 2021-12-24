@@ -16,8 +16,8 @@ ncohort <- 15
 cohortsize <- 3
 n.earlystop <- 9
 
-p.target <- 0.25; p.saf <- 0.16; p.tox <- 0.33 #[0.16, 0.33]
-# p.target <- 0.25; p.saf <- 0.2; p.tox <- 0.3 #[0.2, 0.3]
+# p.target <- 0.25; p.saf <- 0.16; p.tox <- 0.33 #[0.16, 0.33]
+p.target <- 0.25; p.saf <- 0.2; p.tox <- 0.3 #[0.2, 0.3]
 
 for(s in unique(scenariodt$Scenario)){
   

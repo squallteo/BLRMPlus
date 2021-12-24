@@ -4,10 +4,11 @@ library(readxl)
 library(ggpubr)
 rootpath <- getwd()
 
-interval <- "16_33";Pint_BLRM <- c(0, 0.16, 0.33, 1)
-# interval <- "20_30";Pint_BLRM <- c(0, 0.2, 0.3, 1)
-# scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1")
-scenariodt <- read_xlsx("FixedScenarios.xlsx", sheet = "All")
+# interval <- "16_33";Pint_BLRM <- c(0, 0.16, 0.33, 1)
+interval <- "20_30";Pint_BLRM <- c(0, 0.2, 0.3, 1)
+
+scenariodt <- rbind(read_xlsx("FixedScenarios.xlsx", sheet = "Sheet1"), 
+                    read_xlsx("FixedScenarios.xlsx", sheet = "All"))
 design <- 0:4
 maxdose <- 800
 
