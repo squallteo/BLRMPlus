@@ -11,7 +11,7 @@ DoseProv <- c(10, 25, 50, 100, 200, 400, 800)
 DoseRef <- 100
 
 # Pint_BLRM <- c(0, 0.16, 0.33, 1); target_prob <- 0.5
-Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.4
+Pint_BLRM <- c(0, 0.2, 0.3, 1); target_prob <- 0.3
 Nmax <- 45
 ewoc <- 0.3
 cohort_size <- 3

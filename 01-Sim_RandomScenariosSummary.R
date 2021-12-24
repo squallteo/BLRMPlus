@@ -3,8 +3,8 @@ library(tidyverse)
 library(readxl)
 rootpath <- getwd()
 
-randclass <- "Clertant"
-# randclass <- "Paoletti"
+# randclass <- "Clertant"
+randclass <- "Paoletti"
 interval <- "16_33"; Pint_BLRM <- c(0, 0.16, 0.33, 1)
 # interval <- "20_30"; Pint_BLRM <- c(0, 0.20, 0.30, 1)
 design <- 0:4
