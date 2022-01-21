@@ -12,84 +12,45 @@ ProvDose <- subset(scenariodt, Scenario=="Steep")$Dose
 
 nsim <- 1000
 
-ncohort <- 15
 cohortsize <- 3
-n.earlystop <- 9
+# ncohortvec <- c(27, 33, 33, 42, 9)/cohortsize; p.target <- 0.25; p.saf <- 0.16; p.tox <- 0.33 #[0.16, 0.33]
+ncohortvec <- c(30, 33, 36, 42, 9)/cohortsize; p.target <- 0.25; p.saf <- 0.2; p.tox <- 0.3 #[0.2, 0.3]
 
-# p.target <- 0.25; p.saf <- 0.16; p.tox <- 0.33 #[0.16, 0.33]
-p.target <- 0.25; p.saf <- 0.2; p.tox <- 0.3 #[0.2, 0.3]
-
-for(s in unique(scenariodt$Scenario)){
+for(i in 1:length(unique(scenariodt$Scenario))){
+  ncohort <- ncohortvec[i]
+  s <- unique(scenariodt$Scenario)[i]
   
   TrueRates <- subset(scenariodt, Scenario==s)$Rate
-  #BOIN with early stop
-  oc.single <- get.oc(target =p.target, p.saf = p.saf, p.tox = p.tox,
-                      p.true = TrueRates, n.earlystop = n.earlystop,
-                      ncohort = ncohort, cohortsize = cohortsize, ntrial = nsim)
   
+  oc.single <- get.oc(target =p.target, p.saf = p.saf, p.tox = p.tox,
+                      p.true = TrueRates,
+                      ncohort = ncohort, cohortsize = cohortsize, ntrial = nsim)
   tt1 <- tibble(Dose = "AllToxic", MTDFreq = oc.single$percentstop/100, Npat = 0)
   tt2 <- tibble(Dose = ProvDose, MTDFreq = oc.single$selpercent/100, Npat = oc.single$npatients)
   summarydt1 <- 
-  rbind(tt1, tt2) %>% mutate(Noverall = oc.single$totaln, DLTRate = oc.single$totaltox/oc.single$totaln, 
-                             Design = "BOIN_EarlyStop", Scenario = s)
-  
-  #BOIN without early stop
-  oc.single <- get.oc(target =p.target, p.saf = p.saf, p.tox = p.tox,
-                      p.true = TrueRates, n.earlystop = 1000,
-                      ncohort = ncohort, cohortsize = cohortsize, ntrial = nsim)
-  
-  tt1 <- tibble(Dose = "AllToxic", MTDFreq = oc.single$percentstop/100, Npat = 0)
-  tt2 <- tibble(Dose = ProvDose, MTDFreq = oc.single$selpercent/100, Npat = oc.single$npatients)
-  summarydt2 <- 
     rbind(tt1, tt2) %>% mutate(Noverall = oc.single$totaln, DLTRate = oc.single$totaltox/oc.single$totaln, 
                                Design = "BOIN", Scenario = s)
   
-  outdt <- rbind(summarydt1, summarydt2)
   
-  if(s==scenariodt$Scenario[1]){
-    resultdt <- outdt
-  }
-  else{
-    resultdt <- rbind(resultdt, outdt)
-  }
-  
-}
-
-write.csv(resultdt, "BOINSim.csv", row.names = F)
-
-for(s in unique(scenariodt$Scenario)){
-  
-  TrueRates <- subset(scenariodt, Scenario==s)$Rate
-  #Keyboard with early stop
-  oc.single <- get.oc.kb(target =p.target, marginL = p.target - p.saf, marginR = p.tox - p.target, 
-                         p.true = TrueRates, n.earlystop = n.earlystop, 
-                         ncohort = ncohort, cohortsize = cohortsize, ntrial = nsim)
-  
-  tt1 <- tibble(Dose = "AllToxic", MTDFreq = oc.single$percentstop/100, Npat = 0)
-  tt2 <- tibble(Dose = ProvDose, MTDFreq = oc.single$selpercent/100, Npat = oc.single$npatients)
-  summarydt1 <- 
-    rbind(tt1, tt2) %>% mutate(Noverall = oc.single$totaln, DLTRate = oc.single$totaltox/oc.single$totaln, 
-                               Design = "KBD_EarlyStop", Scenario = s)
-  
-  #Keyboard without early stop
   oc.single <- get.oc.kb(target =p.target, marginL = p.target - p.saf, marginR = p.tox - p.target, 
                          p.true = TrueRates, 
                          ncohort = ncohort, cohortsize = cohortsize, ntrial = nsim)
-  
   tt1 <- tibble(Dose = "AllToxic", MTDFreq = oc.single$percentstop/100, Npat = 0)
   tt2 <- tibble(Dose = ProvDose, MTDFreq = oc.single$selpercent/100, Npat = oc.single$npatients)
   summarydt2 <- 
     rbind(tt1, tt2) %>% mutate(Noverall = oc.single$totaln, DLTRate = oc.single$totaltox/oc.single$totaln, 
-                               Design = "KBD", Scenario = s)
+                               Design = "Keyboard", Scenario = s)
   
-  outdt <- rbind(summarydt1, summarydt2)
-  
-  if(s==scenariodt$Scenario[1]){
-    resultdt <- outdt
-  }
-  else{
-    resultdt <- rbind(resultdt, outdt)
-  }
+  tt <- rbind(summarydt1, summarydt2)
+  if(i==1){outdt <- tt}
+  else{outdt <- rbind(outdt, tt)}
 }
 
-write.csv(resultdt, "KBDSim.csv", row.names = F)
+# 
+# write.csv(outdt, "BOIN_KBD_16_33.csv", row.names = F)
+# write.csv(outdt, "BOIN_KBD_20_30.csv", row.names = F)
+
+
+
+
+
