@@ -8,4 +8,6 @@ Zhang, H., Chiang, A., Wang, J., **Improving the Performance of Bayesian Logisti
 
 2. R programs starting with "00-" contain functions for dose escalation and generating simulation scenarios. 
 
-3. R programs starting with "01-" perform simulations and aggregate/present results. 
+3. The excel files contain fixed and random simulation scenarios. 
+
+4. R programs starting with "01-" perform simulations and aggregate/present results. 
